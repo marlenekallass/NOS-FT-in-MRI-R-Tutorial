@@ -1,2 +1,2 @@
 #!/bin/sh
-curl -L -o code/python/testdata.h5 "http://mridata.org/download/3dc8a1a2-5d1e-4200-b04c-98f8b4b62a72"
+curl -L -o testdata.h5 "https://mridata-org-assets.s3.amazonaws.com/media/956bc107-490d-47e1-bb16-886418ac5962.h5"

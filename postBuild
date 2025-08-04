@@ -1,3 +1,2 @@
 #!/bin/sh
-curl -L -o ismrmrd_data.zip https://zenodo.org/record/33166/files/ismrmrd_data.zip
-unzip ismrmrd_data.zip
+curl -L -o testdata.h5 "http://mridata.org/download/3dc8a1a2-5d1e-4200-b04c-98f8b4b62a72"

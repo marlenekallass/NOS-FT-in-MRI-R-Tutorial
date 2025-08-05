@@ -93,3 +93,28 @@ image(abs(img_plot),
       axes = FALSE, asp = 1)
 dev.off()
 
+k_fake = fftshift(fft(fftshift(
+  abs(fftshift(fft(fftshift(k_slice), inverse = TRUE))))))
+
+
+filename = "k_fake.png"
+path_out = file.path(path_figures, filename)
+png(path_out, width=800, height=800, bg = "transparent")
+par(mar = c(0,0,0,0), oma = c(0,0,0,0))
+image(abs(k_fake),
+      col = gray.colors(256, start = 0, end = 1), 
+      axes = FALSE, asp = 1)
+dev.off()
+
+img_rec = fftshift(fft(fftshift(Re(k_fake)), inverse = TRUE))
+
+img_plot <- t(img_rec)[, nrow(img_rec):1]
+
+filename = "img_from_fake_k.png"
+path_out = file.path(path_figures, filename)
+png(path_out, width=800, height=800, bg = "transparent")
+par(mar = c(0,0,0,0), oma = c(0,0,0,0))
+image(Im(img_plot),
+      col = gray.colors(256, start = 0, end = 1), 
+      axes = FALSE, asp = 1)
+dev.off()

@@ -74,7 +74,7 @@ slice = 19; % Nice slice for foot dataset
 K = zeros(enc_Nx, enc_Ny, enc_Nz, nCoils);
 
 % Select the appropriate measurements from the data
-acqs = find(  (meas.head.idx.contrast==(contrast-1)) ...
+acqs = find((meas.head.idx.contrast==(contrast-1)) ...
             & (meas.head.idx.repetition==(rep-1)) ...
             & (meas.head.idx.slice==(slice-1)));
 
@@ -111,5 +111,3 @@ h5create(filename, '/K_slice_real', size(k_slice), 'Datatype', 'double');
 h5write(filename, '/K_slice_real', real(k_slice));
 h5create(filename, '/K_slice_imag', size(k_slice), 'Datatype', 'double');
 h5write(filename, '/K_slice_imag', imag(k_slice));
-
-

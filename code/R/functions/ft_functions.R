@@ -8,6 +8,14 @@ fftshift = function(kspace) {  #
   kspace[reshape_row,reshape_col]               # reshape k-space
 } # End of function fftshift()
 
+# fftshift in 1 dimension
+fftshift1 = function(kspace) {  #
+  rows = length(kspace) # Evaluate n of rows
+  reshape_row = c((rows/2+1):rows, 1:(rows/2))  # rows/2+1 so it starts at first position second half
+  kspace[reshape_row]               # reshape k-space
+} # End of function fftshift()
+
+
 fourier_trans = function(g_t,samp_f,time){
   
   ### Plot all 101 plots via basic plot(). Use the arrows to mimic a gif of the transition, using different sampling 

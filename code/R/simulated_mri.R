@@ -1,119 +1,190 @@
-#A tiny MRI simulation script
-
-#Needed
-#A very simple image 
-#x and y gradients
-#k-space animation
-#FT 
-
-# 1. Simulate a simple image (3x3)
-
-# Define grey values
-mat <- matrix(c(0.5, 0.5, 0.05,
-                0.05, 0.05, 0.5,
-                0.5, 1, 0.05), nrow=3, byrow=TRUE)
-
-base_mat <- matrix(c(0.5, 0.5, 0.05,
-                     0.05, 0.05, 0.5,
-                     0.5, 1, 0.05), nrow = 3, byrow = TRUE)
-
-mat <- kronecker(base_mat, matrix(1, nrow = 100/3, ncol = 100/3))
+### A script for simulating Frequency Encoding in MRI ###
+source('functions/misc_utils.R')
+source('functions/ft_functions.R')
+install_and_load(c("ggplot2", "patchwork"))
 
 
-mat <- matrix(rep(c(0.1, 1), each=5), nrow=100, ncol=100, byrow=TRUE)
+## 1. Simulate a simple image ##
 
+# Simulate an object. Can be any n x n matrix with signal strengths >=0
+n_object_px <- 3  
+imaging_object <- matrix(c(0.6, 1, 0.3,
+                   0.3, 0.6, 1,
+                   1,   0.6, 0.3), nrow = n_object_px, byrow = TRUE)
 
-mat = img_plot[100:149,150:199]
+# Add some zero padding
+padding_size = 1
+n = n_object_px + padding_size*2
+mat <- matrix(0, nrow = n, ncol = n)  
+mat[(1:nrow(imaging_object)) + padding_size, (1:ncol(imaging_object)) + padding_size] <- imaging_object
 
+# Get those entries which contain the object
+object_idx =  which(mat != 0, arr.ind = TRUE)
+object_idx <- object_idx[order(object_idx[, 1], object_idx[, 2]), ]
 
-image(t(apply(mat, 2, rev)), col=gray(seq(0, 1, length=256)),
+# Plot the object
+mat_plot = t(apply(mat, 2, rev)) # for correct orientation 
+image(mat_plot, col=gray(seq(0, 1, length=256)),
       axes=FALSE, useRaster=TRUE,asp=1)
 
-# 2. Simulate a frequency gradient
-n = dim(mat)[1]
-g_max <- n
-x_gradient <- seq(1, g_max, length.out = n)
+## 2. Signal without gradient ##
 
-# 3. Apply the gradient
+freq_0 = 3 # some base frequency
 
-freq_0 = 0
-freq_x = freq_0 + x_gradient
-
-n_turns = 80
-period = 1 / max(freq_x)
-steps_per_turn = 100
-total_steps = steps_per_turn*n_turns+1
+# Select a good time interval for plotting
+n_turns = 2
+period = 1 / freq_0
+n_samples_per_turn = 100
+n_samples_total = n_samples_per_turn*n_turns
 time_max = n_turns * period 
-time = seq(-time_max, time_max, length.out = total_steps)
+time = seq(0, time_max, length.out = n_samples_total)
 
-# Initialize array
-signal_mat <- array(0, dim = c(n, n, length(time)))
 
-# Fill array: arr[col, row, t] = mat[col, row] * cos(freq[col] * time[t])
-for (col_idx in 1:n) {
-  for (row_idx in 1:n) {
-    signal_mat[row_idx, col_idx, ] <- mat[ row_idx, col_idx] * cos(2*pi*freq_x[col_idx] * time)
-  }
+# Generate signal plots for each pixel
+colors <- scales::hue_pal()(n_object_px^2)
+plot_list <- list()
+signals <- array(0, dim = c(n,n,length(time)))
+
+for (idx in 1:n_object_px^2) {
+    row_idx <- object_idx[idx, 1]
+    col_idx <- object_idx[idx, 2]
+    amp <- mat[row_idx, col_idx]
+    signals[row_idx,col_idx,] <- amp * cos(2 * pi * freq_0 * time)
+    df <- data.frame(time,signal = signals[row_idx,col_idx,])
+    
+    p <- ggplot(df, aes(x = time, y = signal)) +
+      geom_line(color = colors[idx], linewidth = 1.5) +
+      ylim(-max(mat), max(mat)) +
+      theme_minimal()
+    
+    plot_list[[idx]] <- p
 }
 
-signal_colsum <- apply(signal_mat, c(2, 3), sum)  # dim: (3 columns) × (time)
+grid_plot <- wrap_plots(plot_list, ncol = n_object_px, nrow = n_object_px)  # auto-adjusts layout
+grid_plot
+
+# Sum signal over all four components (from full `time`)
+signal_sum <- apply(signals, 3, sum)
+df_sum <- data.frame(time = time, value = signal_sum)
+ggplot(df_sum, aes(x = time, y = value)) +
+  geom_line(color = "black", size = 1.5) +
+  ggtitle("Sum of all signals") +
+  theme_minimal()
+
+# The amplitude of signal_sum is just
+amp_sum = sum(mat[object_idx])
 
 
-#plot
-# Set up 1 row, 2 columns for plots
-par(mfrow = c(1, 2))
+## 3. Simulate a frequency gradient ##
 
-# Colors for 9 curves
-colors <- rainbow(n)
+# g_strength and g_max can be anything >0, but this is ensures integer values
+g_strength = 1
+g_max <- g_strength*(n-1)
+freq_x <- seq(0, g_max, length.out = n)
 
-# Plot each arr[i,j,] vs time
-plot(time, signal_colsum[1, ], type = "l", col = colors[1], ylim = range(signal_colsum), xlab = "Time", ylab = "Value")
-k <- 2
 
-for (col_idx in 2:n) {
- 
-    lines(time, signal_colsum[col_idx,], col = colors[col_idx])
-    k <- k + 1
- #}
+# Plot all the signals
+plot_list <- list()
+signals <- array(0, dim = c(n,n,length(time)))
+
+for (idx in 1:n_object_px^2) {
+  row_idx <- object_idx[idx, 1]
+  col_idx <- object_idx[idx, 2]
+  amp <- mat[row_idx, col_idx]
+  signals[row_idx,col_idx,] <- amp * cos(2 * pi * freq_x[col_idx] * time)
+  df <- data.frame(time,signal = signals[row_idx,col_idx,])
+  
+  p <- ggplot(df, aes(x = time, y = signal)) +
+    geom_line(color = colors[idx], linewidth = 1.5) +
+    ylim(-max(mat), max(mat)) +
+    theme_minimal()
+  
+  plot_list[[idx]] <- p
 }
-#legend("topright", legend = paste0("(", rep(1:3, each=3), ",", rep(1:3, 3), ")"), col = cols, lty = 1, cex = 0.7)
 
-# Plot sum over all arr[i,j,] vs time
-sum_signal <- apply(signal_mat, 3, sum)
-plot(time, sum_signal, type = "l", xlab = "Time", ylab = "Sum")
+grid_plot <- wrap_plots(plot_list, ncol = n_object_px, nrow = n_object_px)  # auto-adjusts layout
+grid_plot
 
+# Sum over the columns
+signal_sum_cols <- apply(signals, c(2, 3), sum)  # dim: [col_idx, time]
 
-fs <- 2 * max(freq_x)                # Sampling rate
-dt <- 1 / fs                         # Time step
+# Plot column sum
+plot_list <- list()
+for (idx in 1:n_object_px) {
+  col_idx <- object_idx[idx, 2]
+  df <- data.frame(time,signal = signal_sum_cols[col_idx,])
+  
+  p <- ggplot(df, aes(x = time, y = signal)) +
+    geom_line(color = colors[idx], linewidth = 1.5) +
+    theme_minimal() + 
+  ylim(-max(signal_sum_cols), max(signal_sum_cols)) 
+  plot_list[[idx]] <- p
+}
 
-n_samples = ceiling(max(time)*2/dt)
-if (n_samples %% 2 == 1) n_samples <- n_samples + 1
-sampled_time <- seq(min(time), max(time), length.out=n_samples)
-sampled_signal <- approx(time, sum_signal, xout = sampled_time)$y
-
-plot(sampled_time, sampled_signal)
-
-
-
-sampled_signal = sampled_signal[(n_samples/2-n+1):(n_samples/2+n)]
-plot(sampled_signal)
-
-fftshift1 = function(kspace) {  #
-  # For better readability - could also be done via ncol() and nrow()
-  rows = length(kspace) # Evaluate n of rows
- 
-  reshape_row = c((rows/2+1):rows, 1:(rows/2))  # rows/2+1 so it starts at first position second half
-  # not last position of first half!
-  # same here...
-  kspace[reshape_row]               # reshape k-space
-} # End of function fftshift()
+grid_plot <- wrap_plots(plot_list, ncol = n_object_px)  # auto-adjusts layout
+grid_plot
 
 
+# Sum complete signal 
+
+signal_sum <- apply(signals, 3, sum)
+df_sum <- data.frame(time = time, value = signal_sum)
+ggplot(df_sum, aes(x = time, y = value)) +
+  geom_line(color = "black", size = 1.5) +
+  ggtitle("Sum of all signals") +
+  theme_minimal()
+
+## 4. Sample signal ##
+
+sample_factor = 2 # should be at least 2 for Nyquist
+
+fs <- sample_factor * max(freq_x)/2 # max sampled frequency
+dt <- 1 / (2*fs)  # sampling rate
+
+# Adjust number samples according to sample factor
+# so all frequencies in freq_x are correctly sampled
+n_samples = (fs/g_strength)*2
+
+# Make a symmetric array around 0
+t_max <- n_samples/2 * dt - dt/2
 
 
-img_recon = abs(fftshift1(fft(fftshift1(sampled_signal))))
-img_recon = img_recon[(length(img_recon)/2+1):length(img_recon)]
-plot(img_recon)
+sampled_time <- seq(-t_max, t_max, length.out = n_samples)
 
-img_colsum <- colSums(mat)
-plot(img_colsum)
+# Plot all the signals
+sampled_signals <- array(0, dim = c(n,n,n_samples))
+
+for (idx in 1:n_object_px^2) {
+  row_idx <- object_idx[idx, 1]
+  col_idx <- object_idx[idx, 2]
+  amp <- mat[row_idx, col_idx]
+  sampled_signals[row_idx,col_idx,] <- amp * cos(2 * pi * freq_x[col_idx] * sampled_time)
+}
+
+sampled_signal <- apply(sampled_signals, 3, sum)
+
+# Visualize it in a familiar way
+k_space_line <- matrix(rep(sampled_signal, 2), ncol = 2, byrow = FALSE)
+
+image(k_space_line, col=gray(seq(0, 1, length=256)),
+      axes=FALSE, useRaster=TRUE,asp=1/(2*n_samples))
+
+## 5. Fourier Transform the signal ##
+
+# Visualize it in a familiar way
+
+img_colsum = apply(mat, 2, sum)
+image_line <- matrix(rep(img_colsum, 2), ncol = 2, byrow = FALSE)
+
+image(image_line, col=gray(seq(0, 1, length=256)),
+      axes=FALSE, useRaster=TRUE,asp=1/(2*n))
+
+fft_result = abs(fft(fftshift1(sampled_signal)))
+
+# the spectrum is mirrored, choose one half 
+img_rec = fft_result[0: (n_samples/2)+1]
+
+image_rec_plot <- matrix(rep(img_rec, 2), ncol = 2, byrow = FALSE)
+
+image(image_rec_plot, col=gray(seq(0, 1, length=256)),
+      axes=FALSE, useRaster=TRUE,asp=1/(2*n))

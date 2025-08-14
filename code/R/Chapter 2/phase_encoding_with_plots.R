@@ -535,73 +535,52 @@ p_object = ggplot(df, aes(x = x, y = y, fill = val)) +
 
 # Time interval
 #Test with freq_0 = 1, instead of 2
-freq_0 = 1
+delta_f_max = 1
+period = 1/delta_f_max
 
 
 n_turns = 2
-period = 1 / freq_0
 n_samples_per_turn = 100
+n_samples = n_samples_per_turn*n_turns
 
-# If we sample a time point later than T_grad, this needs to be ~500
-# For the integration get phi correctly
-#n_samples_per_turn = 500 
+T_grad = 1/2*period*n_turns
 
-n_samples_total = n_samples_per_turn*n_turns
-time_max = n_turns * period 
-time = seq(0, time_max, length.out = n_samples_total)
-T_grad = 2*period
 
-# The gradient
-delta_f_FOV_min = 0
-delta_f_FOV_max = (n-1)*freq_0
+delta_f = seq(-delta_f_max,delta_f_max,length.out = n_samples)
 
-delta_f_FOV = seq(delta_f_FOV_min,delta_f_FOV_max,length.out = n_samples_total)
+n_samples = length(delta_f)
 
-delta_f = delta_f_FOV/(n-1) #gradient strength per pixel
-delta_f_max = delta_f_FOV_max/(n-1)
+delta_f_FOV = (n-1)*delta_f
 
-#frequencies over space
+# How frequency varies in space (1 to n px) depending on gradient strength 
 freq_x = t(sapply(delta_f_FOV, function(f) seq(0, f, length.out = n)))
 
-# We only need this if we sample later than T_grad
-# In which case the phase is nonlinear and we need to integrate
-# frequencies over space and time
 
-#freq_xt = array(0, dim = c(n_samples_total, n, n_samples_total))
-#freq_xt[, , time <= T_grad] = freq_x[, , drop=FALSE]
-#t_grad_ind = which.min(abs(time - T_grad))
-#dt = time_max/(n_samples_total-1)
-
-
-amp_sum = sum(mat)
-amp_freq = numeric(0)
+#amp_sum = sum(mat)
+#amp_freq = numeric(0)
+kspace = numeric(0)
 plots = list()
-for (f_idx in 1:n_samples_total){
+for (f_idx in 1:n_samples){
  
   #Phase
-  amps = numeric(n_object_px^2)
+  signals_px = numeric(n_object_px^2)
   for (px_idx in 1:n_object_px^2) {
     row_idx = object_idx[px_idx, 1]
     col_idx = object_idx[px_idx, 2]
     amp = mat[row_idx, col_idx]
     
-    # We only need this if we sample later than T_grad
-    #phase = 2*cumsum(freq_xt[f_idx,col_idx,] * dt)
-    #signal = amp*cos(pi*phase)
-    #amps[px_idx] = signal[t_grad_ind]
-    
     phase = 2* freq_x[f_idx,col_idx]*T_grad
-    amps[px_idx] = amp*cos(pi*phase)
+    signals_px[px_idx] = amp*cos(pi*phase)
     
   }
   
-  amp_freq[f_idx] = sum(amps)
+  kspace[f_idx] = sum(signals_px)
  
-  df = data.frame(x = delta_f[1:f_idx], y = amp_freq )
+  df = data.frame(x = delta_f[1:f_idx], y = kspace )
   p_amp = ggplot(df, aes(x, y)) +
     geom_line() +
     theme_minimal() +
-    labs(x = expression(Delta*"f [Hz]"), y = "Amplitude at time = T")+
+    labs(x = expression(Delta*"f [Hz]"), y = "Value at time = T")+
     xlim(delta_f[1],delta_f_max)+
     coord_fixed(ratio = 1/12) +
     ylim(-amp_sum/2, amp_sum)
@@ -617,7 +596,7 @@ p_gradient = ggplot(df, aes(x, y)) +
   geom_polygon(fill = "blue") +
   coord_fixed(ratio = 1/2.5) +
   theme_void()+
-  ylim(delta_f_FOV_min,delta_f_FOV_max)+
+  ylim(min(delta_f_FOV),max(delta_f_FOV))+
   ggtitle("Phase gradient")+
   theme(plot.title = element_text(size = 10))
   

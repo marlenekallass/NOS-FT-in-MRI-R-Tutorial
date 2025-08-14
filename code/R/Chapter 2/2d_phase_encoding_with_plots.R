@@ -73,9 +73,9 @@ p_kspace = ggplot(df, aes(x = x, y = y, fill = val)) +
   theme_void() +
  # labs(x = expression("Gradient strength"~Delta*f[x]~"[Hz]"), y =  expression("Gradient strength"~Delta*f[y]~"[Hz]")) +
   #labs(x = expression("Phase"~phi[x]~"["*pi*"]"), y =  expression("Phase"~phi[y]~"["*pi*"]")) +
-  labs(x = expression("Spatial frequency"~k[x]~"[1/px]"), y =  expression("Spatial frequency"~k[y]~"[1/px]")) +
+ # labs(x = expression("Spatial frequency"~k[x]~"[1/px]"), y =  expression("Spatial frequency"~k[y]~"[1/px]")) +
  # labs(x = expression("Time [s]"), y =  expression("Gradient strength"~Delta*f[y]~"[Hz]")) +
-  #labs(x = expression("Spatial coordinate"~x), y =  expression("Spatial coordinate"~y)) +
+  labs(x = expression("Spatial coordinate"~x~"[px]"), y =  expression("Spatial coordinate"~y~"[px]")) +
  # labs(x = expression("Time"~t[x]~"[s]"), y =  expression("Time"~t[y]~"[s]")) +
    theme(
     legend.position = "none",

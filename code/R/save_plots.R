@@ -1,5 +1,7 @@
+source("functions/plotting_functions.R")
+
 p = last_plot()
-save_gg(p,path_figures,'simulated_kspace_phase.png',80,80)
+save_gg(p,path_figures,'phase_encoding_2.png',180,60)
 
 p = last_plot()
 save_gg(p,path_figures,'phase_encoding_phase.png',120,120)

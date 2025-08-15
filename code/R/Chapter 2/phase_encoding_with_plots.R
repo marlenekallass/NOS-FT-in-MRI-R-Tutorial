@@ -1,4 +1,98 @@
-## Simulate a phase encoding gradient ##
+source('functions/misc_utils.R') #for install_and_load()
+source('functions/ft_functions.R') #for fftshift()
+source('functions/plotting_functions.R') 
+
+install_and_load(c("ggplot2", "patchwork"))
+
+## Phase general gif ##
+
+freq = 3
+period = 1 / freq
+t_max = period
+time = seq(-t_max, t_max, length.out = 100)
+
+
+fraction_labels <- c(
+  "scriptstyle(0)",
+  "scriptstyle('1/4')", 
+  "scriptstyle('1/2')", 
+  "scriptstyle('3/4')", 
+  "scriptstyle(1)",
+  "scriptstyle('5/4')", 
+  "scriptstyle('3/2')", 
+  "scriptstyle('7/4')", 
+  "scriptstyle(2)"
+)
+
+# Phase steps
+n_phase_steps = 9
+phases = seq(0, 2 , length.out = n_phase_steps)
+
+plots = list()
+
+
+p = ggplot(signal_df, aes(x = time, y = signal)) +
+  geom_hline(yintercept = 0, color = "grey50") +
+  geom_vline(xintercept = 0, color = "grey50") +
+  labs(x = "Time", y = "Signal") +
+  ylim(-1.1, 1.1) +
+  xlim(-t_max,t_max)+
+  theme_minimal() +
+  theme(
+    axis.text = element_blank()
+  ) 
+
+
+
+for (idx in 1:n_phase_steps) {
+  phase = phases[idx]
+  
+  # Label for annotation
+  if (phase == 0) {
+    label_text = paste("phi == scriptstyle(0)")
+    
+  }
+  
+  else if  (phase == 1)  {
+    label_text <- "phi == pi"
+    
+  }
+  else {
+    label_text <- paste("phi == ", fraction_labels[idx], " * pi")
+  }
+  
+  # Cosine wave with phase shift
+  signal = cos(2 * pi * freq * time + pi*phase)
+  
+  signal_df = data.frame(time = time, signal = signal)
+  
+  # Vertical line to peak
+  t_peak = -phase / (2 * freq_0)
+  vertical_line = data.frame(x = t_peak,y =1)
+  
+  p_signal = p +
+    geom_line(data = signal_df, color = "black") +
+    geom_segment(data = vertical_line, aes(x = x, xend = x, y = 0, yend = 1), color = "blue") +
+    annotate("text", x =- max(time)/4, y = 0.9, label = label_text, parse = TRUE, size = 6) 
+    
+    if (phase!= 0){
+      p_signal = p_signal +
+       annotate("segment",
+          x = t_peak, xend = 0,
+          y = 0.5, yend = 0.5,
+          color = "green",
+          arrow = arrow(ends = "last", length = unit(0.2, "cm")))
+    }
+    
+
+  plots[[idx]] = p_signal
+}
+
+filename = "phase_encoding_1.gif"
+path_out = file.path(path_figures, filename)
+#create_gif_from_plots(plots, path_out, 800, 600, 200, fps = 1)
+
+## Frequency phase relationship ##
 
 # First, let's say we only have two pixels
 n = 2
@@ -13,25 +107,21 @@ grad_x = seq(-f_max, f_max, length.out = n)
 freq_x = freq_0 + grad_x
 
 # We turn off the gradient after some time (e.g. 1 period)
-T_grad = (1/freq_0)*2
+T_grad = (1/freq_0)
 
 
 # Time interval
 n_turns = 2
 period = 1 / freq_0
-n_samples_per_turn = 1000 #this needs to be big enough to calculate phase
-n_samples_total = n_samples_per_turn*n_turns
-time_max = n_turns * period 
-time = seq(0, time_max, length.out = n_samples_total)
+n_samples_per_turn = 1000 #this needs to be big enough for integration
+n_samples = n_samples_per_turn*n_turns
+t_max = n_turns * period 
+time = seq(0, t_max, length.out = n_samples)
 
 
 # This is how the gradient varies in time
 freq_xt = matrix(rep(freq_x, times = length(time)), nrow = length(freq_x))
 freq_xt[, time > T_grad] = freq_0
-
-plot(time,freq_xt[2,],type = "l")
-
-
 
 # Plot the signals
 
@@ -52,34 +142,22 @@ time_idx_peak_base = which.min(abs(time - 1.5*period))
 p_signals = ggplot(df_base, aes(x = time, y = signal, color = "label1")) +
   geom_line(size = 1) +
   guides(color = guide_legend())+
-         #(#position = "inside")
-   # ) +
   theme_minimal() +
   theme(
-    #axis.text.y = element_blank(),
-    legend.title = element_blank()#,
-   # legend.position.inside = c(1, 1),
-    #legend.justification.inside = c("right", "top")
+    legend.title = element_blank()
   ) +
   scale_color_manual(values = values,
                      breaks = label_ids,
                      labels = labels)+
   geom_hline(yintercept = 0, color = "black") +
-  labs(x = "Time [s]", y = "Amplitude") +
+  labs(x = "Time [s]", y = "Signal") +
   geom_vline(aes(xintercept = T_grad,color = "label2"),linetype = "dashed")+
   geom_vline(xintercept = time[time_idx_peak_base],color =colors[1],linetype = "dashed")
 
 
-#+
-  #scale_x_continuous(
-   # breaks = seq(-t_max, t_max, length.out = length(x_labels)),
-    #labels = x_labels)  + 
-  #labs(x = expression(Phase~phi~"["*pi*"]"), y= 'Amplitude')
-
-
 # Phase plot
 
-dt = time_max/(n_samples_total-1)
+dt = t_max/(n_samples-1)
 
 freq_0t = rep(freq_0, times = length(time))
 phase_base = 2*cumsum(freq_0t * dt)
@@ -88,19 +166,7 @@ df_phase_base = data.frame(time, phase)
 
 p_phase = ggplot(df_phase_base, aes(x = time, y = phase_base)) +
   geom_line(size = 1, color = colors[1]) +
-  #guides(color = guide_legend())+
-  #(#position = "inside")
-  # ) +
   theme_minimal() +
-  theme(
-    #axis.text.y = element_blank(),
-    #legend.title = element_blank()#,
-    # legend.position.inside = c(1, 1),
-    #legend.justification.inside = c("right", "top")
-  ) +
-  #scale_color_manual(values = values,
-   #                  breaks = label_ids,
-    #                 labels = labels)+
   geom_hline(yintercept = 0, color = "black") +
   labs(x = "Time [s]", y =expression(Phase~phi~"["*pi*"]")) +
   geom_vline(aes(xintercept = T_grad),color = colors[2],linetype = "dashed" )+
@@ -110,23 +176,14 @@ p_phase = ggplot(df_phase_base, aes(x = time, y = phase_base)) +
 
 
 #Frequency 
-
-
-
 df_f_base = data.frame(time, freq = freq_0t)
 
 p_freq = ggplot(df_f_base, aes(x = time, y = freq, color = "label1")) +
   geom_line(size = 1) +
   guides(color = guide_legend())+
-  #(#position = "inside")
-  # ) +
   theme_minimal() +
   theme(
-    #axis.text.y = element_blank(),
-    legend.title = element_blank()#,
-    # legend.position.inside = c(1, 1),
-    #legend.justification.inside = c("right", "top")
-  ) +
+    legend.title = element_blank())+
   scale_color_manual(values = values,
                      breaks = label_ids,
                      labels = labels)+
@@ -135,49 +192,37 @@ p_freq = ggplot(df_f_base, aes(x = time, y = freq, color = "label1")) +
   geom_vline(aes(xintercept = T_grad,color = "label2"),linetype = "dashed", )
  
 
-
-
                          
-
+# Plotting the two signals
 for (idx in 1:n) {
  
-   # time step 
-  
-  # Integrade to get the instantaneous phase
+  # Integrate to get the instantaneous phase
   phase = 2*cumsum(freq_xt[idx, ] * dt)
   
-
   phase_diff = (phase-phase_base)[length(time)]
   time_diff = t_max/(n_turns*2)*phase_diff
   time_idx_peak = which.min(abs(time- (time[time_idx_peak_base]-time_diff)))
   
-   
-  
   signal = cos(pi*phase)
-  
   
   df = data.frame(time,signal,label = label_ids[idx+2])
 
-
-    p_signals = p_signals + geom_line(data = df, aes(x = time, y = signal, color = label), 
+  # Signal plot
+  p_signals = p_signals + 
+    geom_line(data = df, aes(x = time, y = signal, color = label), 
                     size = 1,alpha = 0.5)   +    
-      geom_vline(xintercept = time[time_idx_peak],color =colors[idx+2],linetype = "dashed")
+      geom_vline(xintercept = time[time_idx_peak],color = colors[idx+2],linetype = "dashed")
   
     
-
+  # Phase plot 
   
   df = data.frame(time,phase,label = label_ids[idx+2])
-  
-  #p_phase = p_phase + geom_line(data = df, aes(x = time, y = phase, color = label), 
-   #                             size = 1,alpha = 0.5)+
-  #  geom_vline(xintercept = time[time_idx_peak],color =colors[idx+2],linetype = "dashed")
   
   p_phase = p_phase + geom_line(data = df, aes(x = time, y = phase), 
                                 size = 1,alpha = 0.5, color = colors[idx+2]) +
     geom_vline(xintercept = time[time_idx_peak],color =colors[idx+2],linetype = "dashed")
   
-  
-  
+  # Frequency plot
   
   df = data.frame(time,freq  = freq_xt[idx,],label = label_ids[idx+2])
   p_freq = p_freq + geom_line(data = df, aes(x = time, y = freq, color = label), 
@@ -196,28 +241,36 @@ p_signals +
   scale_x_continuous(
    breaks = seq(0, t_max, length.out = length(x_labels)),
   labels = x_labels)  + 
-  labs(x = expression(Phase~phi~"["*pi*"]"), y= 'Amplitude')
+  labs(x = expression(Phase~phi~"(without gradient) ["*pi*"]"), y= 'Signal')
   
 p_phase + 
   scale_x_continuous(
     breaks = seq(0, t_max, length.out = length(x_labels)),
     labels = x_labels)  + 
   scale_y_continuous(
+    limits = c(min(x_labels),max(x_labels)),
     breaks = seq(0, max(x_labels), length.out = length(x_labels)),
     labels = x_labels)  + 
-  labs(x = expression(Phase~phi~"["*pi*"]"), y= expression(Phase~phi~"["*pi*"]"))
+  labs(x = expression(Phase~phi~"(without gradient) ["*pi*"]"), y= expression(Phase~phi~"["*pi*"]"))
 
 
-## plot with constant gradient
+
+
+
+
+
+
+## plot with constant gradient ##
 
 # Plot the signals
 
 # Colors and labels for the legend
-colors = c("black", "red", "blue","pink")
-labels = c("f = 4 Hz", "Gradient turned off", "f = 2.5 Hz", "f = 5.5 Hz")
+colors = c("black", "blue","pink")
+labels = paste0("f = ", c(freq_0, freq_x), " Hz")
+
 
 # IDs, match IDs to color
-label_ids = c(paste0("label", 1:(n + 2)))
+label_ids = c(paste0("label", 1:(n+1 )))
 values = setNames(colors, label_ids)
 
 # A signal at the basic freq_0
@@ -229,194 +282,86 @@ time_idx_peak_base = which.min(abs(time - 1.5*period))
 p_signals = ggplot(df_base, aes(x = time, y = signal, color = "label1")) +
   geom_line(size = 1) +
   guides(color = guide_legend())+
-  #(#position = "inside")
-  # ) +
   theme_minimal() +
   theme(
-    #axis.text.y = element_blank(),
-    legend.title = element_blank()#,
-    # legend.position.inside = c(1, 1),
-    #legend.justification.inside = c("right", "top")
+    legend.title = element_blank()
   ) +
   scale_color_manual(values = values,
                      breaks = label_ids,
                      labels = labels)+
   geom_hline(yintercept = 0, color = "black") +
-  labs(x = "Time [s]", y = "Amplitude") 
+  labs(x = "Time [s]", y = "Signal") 
 
-#+
-#scale_x_continuous(
-# breaks = seq(-t_max, t_max, length.out = length(x_labels)),
-#labels = x_labels)  + 
-#labs(x = expression(Phase~phi~"["*pi*"]"), y= 'Amplitude')
-
-
-# Phase plot
-
-dt = time_max/(n_samples_total-1)
-
-freq_0t = rep(freq_0, times = length(time))
-phase_base = 2*cumsum(freq_0t * dt)
+phase = 2*freq_0*time
 
 df_phase_base = data.frame(time, phase)
 
-p_phase = ggplot(df_phase_base, aes(x = time, y = phase_base)) +
+p_phase = ggplot(df_phase_base, aes(x = time, y = phase)) +
   geom_line(size = 1, color = colors[1]) +
-  #guides(color = guide_legend())+
-  #(#position = "inside")
-  # ) +
   theme_minimal() +
-  theme(
-    #axis.text.y = element_blank(),
-    #legend.title = element_blank()#,
-    # legend.position.inside = c(1, 1),
-    #legend.justification.inside = c("right", "top")
-  ) +
-  #scale_color_manual(values = values,
-  #                  breaks = label_ids,
-  #                 labels = labels)+
   geom_hline(yintercept = 0, color = "black") +
   labs(x = "Time [s]", y =expression(Phase~phi~"["*pi*"]")) 
 
 
-#Frequency 
-
-
-
-df_f_base = data.frame(time, freq = freq_0t)
-
-p_freq = ggplot(df_f_base, aes(x = time, y = freq, color = "label1")) +
-  geom_line(size = 1) +
-  guides(color = guide_legend())+
-  #(#position = "inside")
-  # ) +
-  theme_minimal() +
-  theme(
-    #axis.text.y = element_blank(),
-    legend.title = element_blank()#,
-    # legend.position.inside = c(1, 1),
-    #legend.justification.inside = c("right", "top")
-  ) +
-  scale_color_manual(values = values,
-                     breaks = label_ids,
-                     labels = labels)+
-  geom_hline(yintercept = 0, color = "black") +
-  labs(x = "Time [s]", y = "Frequency [Hz]")+
-  geom_vline(aes(xintercept = T_grad,color = "label2"),linetype = "dashed", )
-
-
-
-
-
-
 for (idx in 1:n) {
   
-  # time step 
-  
-  # Integrade to get the instantaneous phase
-  phase = 2*cumsum(freq_xt[idx, ] * dt)
-  
-  phase_diff = (phase-phase_base)[length(time)]
-  time_diff = t_max/(n_turns*2)*phase_diff
-  time_idx_peak = which.min(abs(time- (time[time_idx_peak_base]-time_diff)))
-  
-  
-  
 
-  
+  phase = 2*freq_x[idx]*time
   
   signal = cos(pi*phase)
   
+  df = data.frame(time,signal,label = label_ids[idx+1])
   
-  df = data.frame(time,signal,label = label_ids[idx+2])
-  
-  
-  p_signals = p_signals + geom_line(data = df, aes(x = time, y = signal, color = label), 
+  p_signals = p_signals + 
+    geom_line(data = df, aes(x = time, y = signal, color = label), 
                                     size = 1,alpha = 0.5)       
+  
+  
+  df = data.frame(time,phase,label = label_ids[idx+1])
  
-  
-  
-  
-  df = data.frame(time,phase,label = label_ids[idx+2])
-  
-  #p_phase = p_phase + geom_line(data = df, aes(x = time, y = phase, color = label), 
-  #                             size = 1,alpha = 0.5)+
-  #  geom_vline(xintercept = time[time_idx_peak],color =colors[idx+2],linetype = "dashed")
-  
-  p_phase = p_phase + geom_line(data = df, aes(x = time, y = phase), 
-                                size = 1,alpha = 0.5, color = colors[idx+2]) 
-
-  
-  
-  df = data.frame(time,freq  = freq_xt[idx,],label = label_ids[idx+2])
-  p_freq = p_freq + geom_line(data = df, aes(x = time, y = freq, color = label), 
-                              size = 1,alpha = 0.5)
+  p_phase = p_phase +
+    geom_line(data = df, aes(x = time, y = phase), 
+                                size = 1,alpha = 0.5, color = colors[idx+1]) 
   
 }
 
 p_signals 
 p_phase
-p_freq
-
-x_labels = seq(0, t_max*freq_0*2, 0.5)
-
-# change axis
-p_signals + 
-  scale_x_continuous(
-    breaks = seq(0, t_max, length.out = length(x_labels)),
-    labels = x_labels)  + 
-  labs(x = expression(Phase~phi~"["*pi*"]"), y= 'Amplitude')
-
-p_phase + 
-  scale_x_continuous(
-    breaks = seq(0, t_max, length.out = length(x_labels)),
-    labels = x_labels)  + 
-  scale_y_continuous(
-    breaks = seq(0, max(x_labels), length.out = length(x_labels)),
-    labels = x_labels)  + 
-  labs(x = expression("Phase (without gradient)"~"["*pi*"]"), y= expression(Phase~phi~"["*pi*"]"))
 
 
 
 
-
-
-
-
-
-
-
-### Now we simulate a gradient with changing gradient strength ###
+## Now we simulate a gradient with changing gradient strength ##
 freq_0 = 4
 
 # time
 n_turns = 2
 period = 1 / freq_0
 n_samples_per_turn = 50
-n_samples_total = n_samples_per_turn*n_turns
-time_max = n_turns * period 
-time = seq(0, time_max, length.out = n_samples_total)
+n_samples = n_samples_per_turn*n_turns
+t_max = n_turns * period 
+time = seq(0, t_max, length.out = n_samples)
 
 
 # gradient 
 delta_f_min = -freq_0
 delta_f_max = freq_0
-delta_f = seq(delta_f_min,delta_f_max,length.out = n_samples_total)
+delta_f = seq(delta_f_min,delta_f_max,length.out = n_samples)
 
 freq_x = freq_0 + delta_f
 
 # We turn off the gradient after some time (e.g. 1 period)
 T_grad = (1/freq_0)
 
-freq_xt = matrix(rep(freq_x, times = n_samples_total), nrow = length(freq_x))
+freq_xt = matrix(rep(freq_x, times = n_samples), nrow = length(freq_x))
 freq_xt[, time > T_grad] = freq_0
 
 
-signals = array(0, dim = n_samples)
-phase = array(0, dim =n_samples)
+dt = t_max/(n_samples-1)
 
-dt = time_max/(n_samples_total-1)
+# Third peak
 time_peak_base = 2*period
+#Second peak
 time_peak_base_1 = period
 
 signal_base = cos(2*pi*freq_0*time)
@@ -424,26 +369,26 @@ df = data.frame(x=time,y=signal_base)
 p_signal = ggplot(df, aes(x, y)) +
   geom_line() +
   theme_minimal() +
-  labs(x = "Time [s]", y = "Amplitude")+
+  labs(x = "Time [s]", y = "Signal")+
   geom_vline(xintercept = T_grad,color = "red",linetype = "dashed" )+
   ylim(-1, 1) 
 
 t_grad_ind = which.min(abs(time - T_grad))
+
 phase_diff = numeric(0)
 amp_freq = numeric(0)
+
 plots = list()
 for (f_idx in 1:length(delta_f)) {
-#  for (f_idx in 1:10) {
   
   # Integrate to get the instantaneous phase
   phase = 2*cumsum(freq_xt[f_idx,] * dt)
   
-  
 
   # The difference while gradient turned on
   phase_diff[f_idx] = 2*(freq_x[f_idx]-freq_0)*T_grad
-  time_diff = time_max/(n_turns*2)*phase_diff[f_idx]
- #time_diff = period/(2)*phase_diff[f_idx]
+  time_diff = t_max/(n_turns*2)*phase_diff[f_idx]
+
   
   if (delta_f[f_idx]<0) {
     time_peak_plot = time_peak_base_1
@@ -474,7 +419,6 @@ for (f_idx in 1:length(delta_f)) {
   p_signal2 = p_signal + 
     geom_line(data = df, aes(x, y), color = "pink") +
     geom_vline(xintercept = time_peak,color = "pink",linetype = "dashed")+
-    #geom_vline(xintercept = time_peak_plot,color = "grey",linetype = "dashed" )+
     annotate(
       "segment",
       x = time_peak, xend = time_peak_plot,
@@ -499,22 +443,26 @@ for (f_idx in 1:length(delta_f)) {
   p_amp = ggplot(df, aes(x, y)) +
     geom_line() +
     theme_minimal() +
-    labs(x = expression(Delta*"f [Hz]"), y = "Amplitude at time = T")+
+    labs(x = expression(Delta*"f [Hz]"), y = "Signal at time = T")+
     xlim(delta_f[1],delta_f_max)+
     ylim(-1, 1)
   
   grid_plot = wrap_plots(p_freq,p_phase,p_signal2,p_amp, ncol = 2, nrow = 2)  # auto-adjusts layout
   
   
-  plots[[f_idx]] = grid_plot
+  plots[[f_idx]] = grid_plot & theme(
+    plot.background  = element_rect(fill = "transparent", colour = NA),
+    panel.background = element_rect(fill = "transparent", colour = NA)
+  )
+  
   
 }
 
-plots = plots[seq(1, length(plots), by = 4)]
+plots_selected = plots[seq(1, length(plots), by = 5)]
 
 filename = "phase_encoding_epic_demo_test.gif"
 path_out = file.path(path_figures, filename)
-create_gif_from_plots(plots, path_out, 800, 600, 100, fps = 1)
+create_gif_from_plots(plots_selected, path_out, 1200, 900, 150, fps = 1)
 
 
 

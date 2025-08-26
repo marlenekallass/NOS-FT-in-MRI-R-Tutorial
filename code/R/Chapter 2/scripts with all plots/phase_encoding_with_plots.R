@@ -598,7 +598,7 @@ plots_gif = plots[seq(1, length(plots), by = 10)]
 
 filename = "phase_encoding_object_demo_test.gif"
 path_out = file.path(path_figures, filename)
-create_gif_from_plots(plots_gif, path_out, 1800, 900, 225, fps = 1)
+#create_gif_from_plots(plots_gif, path_out, 1800, 900, 225, fps = 1)
 
 
 ## Actual phase encoding ##

@@ -1,38 +1,35 @@
 
 source("functions/misc_utils.R")
 source("functions/plotting_functions.R")
-
-
 install_and_load(c("ggplot2", "magick", "pracma", "patchwork"))
 
 
-path_figures = "../../figures"
+path_figures = "../../figures/Chapter 3/gifs"
 
 # Global variables
 i = complex(real = 0, imaginary = 1)
 
 # Parameters
-skip_frames = 1
-freq = 3
+freq_0 = 3
 n_turns = 1
-period = 1 / freq
-angle_step = 1 / (16 * 4)
-time = seq(0, n_turns * period, by = angle_step * period)
+angle_steps = 1 / (16 * 4) * 1/freq_0
+time = seq(0, n_turns * 1/freq_0, by =angle_steps)
 
 # Sample frequencies
-samp_f = c(3, -3)
+freqs = c(freq_0, -freq_0)
 
 # Signal
-#g_t = cos(2 * pi * freq * time)
-#gt_df <- data.frame(time = time, g_t = g_t)
-g_t = -sin(2 * pi * freq * time)*i
+g_t = cos(2 * pi * freq_0 * time)
+gt_df = data.frame(time = time, g_t = g_t)
+
+g_t = -sin(2 * pi * freq_0 * time)*i
 gt_df <- data.frame(time = time, g_t = Im(g_t))
 
 # Fourier means
-g_hat_mean = matrix(0, ncol = 2, nrow = length(samp_f))
-for (index in 1:length(samp_f)) {
-  g_hat_mean[index, 1] = Re(mean(g_t * exp(2 * pi * i * samp_f[index] * time)))
-  g_hat_mean[index, 2] = Im(mean(g_t * exp(2 * pi * i * samp_f[index] * time)))
+g_hat_mean = matrix(0, ncol = 2, nrow = length(freqs))
+for (index in 1:length(freqs)) {
+  g_hat_mean[index, 1] = Re(mean(g_t * exp(2 * pi * i * freqs[index] * time)))
+  g_hat_mean[index, 2] = Im(mean(g_t * exp(2 * pi * i * freqs[index] * time)))
 }
 g_hat_mean_df = as.data.frame(g_hat_mean)
 colnames(g_hat_mean_df) = c("Re", "Im")
@@ -44,16 +41,14 @@ min_max = matrix(c(-1, -1, 1, 1), ncol = 4, byrow = TRUE)
 full_Re = list()
 full_Im = list()
 points = list()
-for (index in 1:length(samp_f)) {
-  full_Re[[index]] = Re(g_t * exp(2 * pi * i * samp_f[index] * time))
-  full_Im[[index]] = Im(g_t * exp(2 * pi * i * samp_f[index] * time))
+for (index in 1:length(freqs)) {
+  full_Re[[index]] = Re(g_t * exp(2 * pi * i * freqs[index] * time))
+  full_Im[[index]] = Im(g_t * exp(2 * pi * i * freqs[index] * time))
   points[[index]] = g_hat_mean_df[index, ]
 }
 
 plots = list()
-idxs = seq(1, length(time), by = skip_frames)
-for (k in seq_len(length(idxs) - 1)) {
-  t = idxs[k]
+for (t in seq_along(time)) {
   
   # First frequency
   g_f = data.frame(Re = full_Re[[1]][1:t], Im = full_Im[[1]][1:t])
@@ -65,10 +60,11 @@ for (k in seq_len(length(idxs) - 1)) {
                  arrow = arrow(length = unit(0.2, "cm")), color = "black") +
     labs(title = expression(omega == +nu),
          x = "Real Number", y = "Imaginary Number")+
-    xlim(c(min(min_max[,1]),max(min_max[,3]))) +  # making sure that plot is not out of bounds
-    ylim(c(min(min_max[,2]),max(min_max[,4]))) +  # and not just centralized
-    theme_minimal() + # white instead of grey background
-    theme(plot.title.position = "plot",  plot.title = element_text(hjust = 0.9),axis.text.x = element_text(angle = 45, hjust = 1)) +
+    xlim(c(min(min_max[,1]),max(min_max[,3]))) +
+    ylim(c(min(min_max[,2]),max(min_max[,4]))) +
+    theme_minimal() +
+    theme(plot.title.position = "plot",  plot.title = element_text(hjust = 0.6),
+          axis.text.x = element_text(angle = 45, hjust = 1)) +
     coord_fixed()
   
   # Second frequency
@@ -81,10 +77,11 @@ for (k in seq_len(length(idxs) - 1)) {
                  arrow = arrow(length = unit(0.2, "cm")), color = "black") +
     labs(title = expression(omega == -nu),
          x = "Real Number", y = "Imaginary Number")+
-    xlim(c(min(min_max[,1]),max(min_max[,3]))) +  # making sure that plot is not out of bounds
-    ylim(c(min(min_max[,2]),max(min_max[,4]))) +  # and not just centralized
-    theme_minimal() + # white instead of grey background
-    theme(plot.title.position = "plot",  plot.title = element_text(hjust = 0.9),axis.text.x = element_text(angle = 45, hjust = 1)) +
+    xlim(c(min(min_max[,1]),max(min_max[,3]))) +
+    ylim(c(min(min_max[,2]),max(min_max[,4]))) +
+    theme_minimal() +
+    theme(plot.title.position = "plot",  plot.title = element_text(hjust = 0.6),
+          axis.text.x = element_text(angle = 45, hjust = 1)) +
     coord_fixed()
   
   # Time domain
@@ -97,27 +94,35 @@ for (k in seq_len(length(idxs) - 1)) {
       arrow = arrow(length = unit(0.2, "cm")),
       color = "black"
     ) +
-    #labs(title = "Real signal", x = "Time", y = "Amplitude") +
-    labs(title = "Imaginary signal", x = "Time", y = "Amplitude") +
+    #labs(x = "Time", y = "Real signal") +
+    labs(x = "Time", y = "Imaginary signal") +
     theme_minimal() +
-    theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.6))
+    theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.55))
   
-  #optional: change xlabels
   plot3 <- plot3 +
-  scale_x_continuous(
-    breaks = c(0, 1/(4*freq), 1/(2*freq), 3/(4*freq), 1/freq),
-    labels = c(
-      expression(0),
-      expression(frac(1, 4*nu)),
-      expression(frac(1, 2*nu)),
-      expression(frac(3, 4*nu)),
-      expression(frac(1, nu))))
+    scale_x_continuous(
+      breaks = c(0, 1/(4*freq_0), 1/(2*freq_0), 3/(4*freq_0), 1/freq_0),
+      labels = c(
+        expression(0),
+        expression(frac(1, 4*nu)),
+        expression(frac(1, 2*nu)),
+        expression(frac(3, 4*nu)),
+        expression(frac(1, nu))))
   
-  plots[[k]] = (plot1 | plot2) / plot3
+  plots[[t]] = (plot1 | plot2) / plot3 & theme(
+    plot.background  = element_rect(fill = "transparent", colour = NA),
+    panel.background = element_rect(fill = "transparent", colour = NA))
 }
+
+# Subset every skip_frames-th plot
+skip_frames = 1
+plots_subset = plots[seq(1, length(plots), by = skip_frames)]
+
+#wrap_plots(plot1,plot2,plot3, ncol = 2, nrow = 2)  # auto-adjusts layout
+
 
 filename = "test.gif"
 path_out = file.path(path_figures, filename)
-create_gif_from_plots(plots, path_out, width = 318, height = 362, res = 96, fps = 2) 
+create_gif_from_plots(plots_subset, path_out, width = 900, height = 900,res = 150, fps = 2) 
 
 

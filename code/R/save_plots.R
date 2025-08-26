@@ -1,10 +1,13 @@
 source("functions/plotting_functions.R")
 
 p = last_plot()
-save_gg(p,path_figures,'phase_encoding_2.png',180,60)
+save_gg(p,path_figures,'img_recon_real_axis.png',67.5,75)
+
+p = last_plot()
+save_gg(p,path_figures,'colsum_image.png',60,10)
 
 p = last_plot()
 save_gg(p,path_figures,'phase_encoding_phase.png',120,120)
 
 p = recordPlot()
-save_figure(p, path_figures , 'k_line.png')
+save_figure(p, path_figures , 'img_obj.png')

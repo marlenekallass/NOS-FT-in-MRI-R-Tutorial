@@ -28,14 +28,14 @@ img_slice = fftshift(fft(fftshift(k_slice), inverse = TRUE))
 
 # Because of how the image() function interprets matrix indices
 # we need to switch x and y, and flip the y axis
-img_plot = t(img_slice)[, nrow(img_slice):1]
-
+img_plot = Im(t(img_slice)[, nrow(img_slice):1])
+#img_plot = Re(img_plot)
 # Show the magnitude image
 filename = "img_mag.png"
 path_out = file.path(path_figures, filename)
 png(path_out, width=800, height=800, bg = "transparent")
 par(mar = c(0,0,0,0), oma = c(0,0,0,0))
-image(abs(img_plot),
+image(img_plot,
       col = gray.colors(256, start = 0, end = 1), 
       axes = FALSE, asp = 1)
 dev.off()

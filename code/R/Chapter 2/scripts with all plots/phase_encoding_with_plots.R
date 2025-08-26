@@ -4,6 +4,41 @@ source('functions/plotting_functions.R')
 
 install_and_load(c("ggplot2", "patchwork"))
 
+# For saving plots
+path_figures = "../../figures/Chapter 2/frequency encoding"
+par(mar = c(0, 0, 0, 0))
+
+# variable parameters:
+# values in imaging_object
+# n_object_px, integer > 0, adjust imaging_object accordingly
+# delta_f
+# freq_0
+
+
+## 1. Simulate a simple image ##
+
+# Simulate an object. Can be any n x n matrix with signal strengths >=0
+n_object_px = 4
+imaging_object = matrix(c(0.3,   1, 0.3, 0.6, 
+                          0.6,   1,   1,   1, 
+                          0.3, 0.6, 0.3, 0.3, 
+                          0.3, 0.6,   1, 0.3), nrow = n_object_px, byrow = TRUE)
+
+
+# Add some zero padding
+# Makes things a little easier because we can ignore 
+# the case where frequency = 0, because we have magnitude = 0 there
+
+padding_size = 1
+n = n_object_px + padding_size*2
+mat = matrix(0, nrow = n, ncol = n)  
+mat[(1:nrow(imaging_object)) + padding_size, (1:ncol(imaging_object)) + padding_size] = imaging_object
+
+# Get those entries which contain the object
+object_idx =  which(mat != 0, arr.ind = TRUE)
+object_idx = object_idx[order(object_idx[, 1], object_idx[, 2]), ]
+
+
 ## Phase general gif ##
 
 freq = 3
@@ -27,6 +62,10 @@ fraction_labels <- c(
 # Phase steps
 n_phase_steps = 9
 phases = seq(0, 2 , length.out = n_phase_steps)
+
+signal =  cos(2* pi * freq_0 * time)
+signal_df = data.frame(time = time, signal = signal)
+
 
 plots = list()
 
@@ -462,7 +501,7 @@ plots_selected = plots[seq(1, length(plots), by = 5)]
 
 filename = "phase_encoding_epic_demo_test.gif"
 path_out = file.path(path_figures, filename)
-create_gif_from_plots(plots_selected, path_out, 1200, 900, 150, fps = 1)
+#create_gif_from_plots(plots_selected, path_out, 1200, 900, 150, fps = 1)
 
 
 
@@ -568,9 +607,9 @@ delta_f_max = 1
 
 T_grad = 1/(2*delta_f_max)
 
-delta_f_steps = delta_f_max/(n-1)
+delta_f_step = delta_f_max/(n-1)
 
-delta_f = seq(-delta_f_max,delta_f_max,delta_f_steps)
+delta_f = seq(-delta_f_max,delta_f_max,delta_f_step)
 
 n_samples = length(delta_f)
 

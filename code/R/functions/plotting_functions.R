@@ -15,7 +15,7 @@ save_gg = function(p = last_plot(), path_figures = "../../figures", filename = '
   ggsave(path_out, plot=p, device="png", width=w, height=h,units = 'mm')
 }
 
-save_figure = function(p, path_figures =  "../../figures", filename = 'figure.png',w = 800, h = 800){
+save_figure = function(p, path_figures =  "../../figures", filename = 'figure.png',w = 80, h = 80){
   
   path_out = file.path(path_figures, filename)
   png(path_out, width=w, height=h, bg = "transparent")

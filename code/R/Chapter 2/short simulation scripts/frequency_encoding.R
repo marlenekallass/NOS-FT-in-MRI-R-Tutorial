@@ -11,20 +11,19 @@ source('functions/ft_functions.R')
 ## 1. Simulate a simple image ##
 
 # Simulate an object
-n = 5
-mat = matrix(c(0, 0, 0, 0,0,
-               0, 0.6, 1, 0.3, 0,
-               0, 0.3, 0.6, 1, 0,
-               0, 1, 0.6, 0.3, 0,
-               0, 0, 0, 0, 0), nrow = n, byrow = TRUE)
-
+n = 6
+mat = matrix(c(0,   0,   0,   0,   0, 0,
+               0, 0.3,   1, 0.3, 0.6, 0,
+               0, 0.6,   1,   1,   1, 0,
+               0, 0.3, 0.6, 0.3, 0.3, 0,
+               0, 0.3, 0.6,   1, 0.3, 0,
+               0,   0,   0,   0,   0, 0), nrow = n, byrow = TRUE)
 
 # Plot the object
 mat_plot = t(apply(mat, 2, rev)) # for correct orientation
 
 image(mat_plot, col=gray(seq(0, 1, length=256)),
       axes=FALSE, useRaster=TRUE,asp=1)
-
 
 ## 2. Simulate a frequency gradient ##
 
@@ -41,7 +40,7 @@ dt = 1 / (2*f_max)  #  Sampling rate
 
 t_max = 1/delta_f*1/2 # Sampling time
 
-time = seq(-t_max, t_max, dt)
+time = seq(-t_max, t_max-dt, dt)
 
 n_samples = length(time)
 
@@ -73,7 +72,7 @@ image(img_colsum_plot, col=gray(seq(0, 1, length=256)),
       axes=FALSE, useRaster=TRUE,asp=1/(2*n))
 
 # Perform Fourier transform
-fft_result = abs(fft(fftshift(kspace)))
+fft_result = Re(fft(fftshift(kspace)))
 
 # Take only positive frequencies
 img_rec = fft_result[1: (length(fft_result)/2+1)] 

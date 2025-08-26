@@ -1,3 +1,5 @@
 rawData/
 .vs/
 .Rproj.user
+.RDataTmp*
+.Rhistory

@@ -1,7 +1,7 @@
 source("functions/plotting_functions.R")
 
 p = last_plot()
-save_gg(p,path_figures,'img_recon_real_axis.png',67.5,75)
+save_gg(p,path_figures,'real_kspace.png',70,70)
 
 p = last_plot()
 save_gg(p,path_figures,'colsum_image.png',60,10)

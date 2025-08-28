@@ -22,8 +22,8 @@ freqs = c(freq_0, -freq_0)
 g_t = cos(2 * pi * freq_0 * time)
 gt_df = data.frame(time = time, g_t = g_t)
 
-g_t = -sin(2 * pi * freq_0 * time)*i
-gt_df <- data.frame(time = time, g_t = Im(g_t))
+#g_t = -sin(2 * pi * freq_0 * time)*i
+#gt_df <- data.frame(time = time, g_t = Im(g_t))
 
 # Fourier means
 g_hat_mean = matrix(0, ncol = 2, nrow = length(freqs))
@@ -90,12 +90,12 @@ for (t in seq_along(time)) {
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
     geom_segment(
       x = time[t], xend = time[t],
-      y = 0, yend = gt_df$g_t[t],,
+      y = 0, yend = gt_df$g_t[t],
       arrow = arrow(length = unit(0.2, "cm")),
       color = "black"
     ) +
-    #labs(x = "Time", y = "Real signal") +
-    labs(x = "Time", y = "Imaginary signal") +
+    labs(x = "Time", y = "Real signal") +
+    #labs(x = "Time", y = "Imaginary signal") +
     theme_minimal() +
     theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.55))
   
@@ -115,7 +115,7 @@ for (t in seq_along(time)) {
 }
 
 # Subset every skip_frames-th plot
-skip_frames = 1
+skip_frames = 2
 plots_subset = plots[seq(1, length(plots), by = skip_frames)]
 
 #wrap_plots(plot1,plot2,plot3, ncol = 2, nrow = 2)  # auto-adjusts layout

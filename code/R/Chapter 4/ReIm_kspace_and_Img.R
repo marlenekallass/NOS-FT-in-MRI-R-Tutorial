@@ -3,6 +3,7 @@
 #BiocManager::install("rhdf5")
 
 library(rhdf5)
+library(ggplot2)
 source("functions/ft_functions.R")
 path_figures = "../../figures/recon"
 
@@ -14,58 +15,65 @@ k_imag <- h5read(filename, "K_slice_imag")
 k_slice <- k_real + 1i * k_imag
 
 
-filename = "k_real.png"
-path_out = file.path(path_figures, filename)
-png(path_out, width=800, height=800, bg = "transparent")
-par(mar = c(0,0,0,0), oma = c(0,0,0,0))
 image(abs(k_real),
       col = gray.colors(256, start = 0, end = 1), 
       axes = FALSE, asp = 1)
-dev.off()
 
 
 filename = "k_imag.png"
-path_out = file.path(path_figures, filename)
-png(path_out, width=800, height=800, bg = "transparent")
-par(mar = c(0,0,0,0), oma = c(0,0,0,0))
 image(abs(k_imag),
       col = gray.colors(256, start = 0, end = 1), 
       axes = FALSE, asp = 1)
-dev.off()
+
 
 img_slice <- fftshift(fft(fftshift(k_slice), inverse = TRUE))
 
 img_plot <- t(img_slice)[, nrow(img_slice):1]
 
 
-filename = "img_Re.png"
-path_out = file.path(path_figures, filename)
-png(path_out, width=800, height=800, bg = "transparent")
-par(mar = c(0,0,0,0), oma = c(0,0,0,0))
 image(abs(Re(img_plot)),
       col = gray.colors(256, start = 0, end = 1), 
       axes = FALSE, asp = 1)
-dev.off()
 
 
-filename = "img_Im.png"
-path_out = file.path(path_figures, filename)
-png(path_out, width=800, height=800, bg = "transparent")
-par(mar = c(0,0,0,0), oma = c(0,0,0,0))
-image(abs(Im(img_plot)),
+image(Im(img_plot),
 col = gray.colors(256, start = 0, end = 1), 
 axes = FALSE, asp = 1)
-dev.off()
+
+img_plot_2 = img_plot[1:(nrow(img_plot)/2),(ncol(img_plot)/2):ncol(img_plot)]
+
+df = as.data.frame(as.table(Im(img_plot)))
+ggplot(df, aes(Var1, Var2, fill = Freq)) +
+  geom_raster() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", name = "") +
+  theme_void()+
+  coord_fixed(ratio = 0.75)
+
+df = as.data.frame(as.table(Re(img_plot)))
+ggplot(df, aes(Var1, Var2, fill = Freq)) +
+  geom_raster() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", name = "") +
+  theme_void()+
+  coord_fixed(ratio = 0.75)
+
+img_filtered = img_plot
+img_filtered[abs(img_plot)<max(abs(bg))] = 0
+
+bg=  img_plot[1:(nrow(img_plot)/2),(ncol(img_plot)/2):ncol(img_plot)]
+df = as.data.frame(as.table(Arg(img_filtered)/pi))
+
+#df = as.data.frame(as.table(Arg(img_filtered)))
+ggplot(df, aes(Var1, Var2, fill = Freq)) +
+  geom_raster() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", name = "",limits = c(-1,1)) +
+  theme_void()+
+  coord_fixed(ratio = 0.75)
 
 
-filename = "img_arg.png"
-path_out = file.path(path_figures, filename)
-png(path_out, width=800, height=800, bg = "transparent")
-par(mar = c(0,0,0,0), oma = c(0,0,0,0))
 image(Arg(img_plot),
 col = gray.colors(256, start = 0, end = 1), 
 axes = FALSE, asp = 1)
-dev.off()
+
 
 img_slice <- fftshift(fft(fftshift(k_real), inverse = TRUE))
 

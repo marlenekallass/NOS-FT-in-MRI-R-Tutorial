@@ -1,9 +1,4 @@
-source("functions/ft_functions.R")
-
-path_figures = "../../figures/Chapter 3/simulation"
-
-i = complex(real = 0,imaginary = 1)
-
+i = complex(real = 0, imaginary = 1)
 n = 6
 mat = matrix(c(0,   0,   0,   0,   0, 0,
                0, 0.3,   1, 0.3, 0.6, 0,
@@ -12,12 +7,19 @@ mat = matrix(c(0,   0,   0,   0,   0, 0,
                0, 0.3, 0.6,   1, 0.3, 0,
                0,   0,   0,   0,   0, 0), nrow = n, byrow = TRUE)
 
+random_phase = matrix(c( 7.989183, 6.808442, 6.189647, 7.040273, 5.300959, 6.786206,
+                         9.788502, 8.044921, 7.133085, 9.376243, 7.513669, 6.221505,
+                         9.317266, 9.250059, 6.287865, 9.812796, 9.671555, 9.483970,
+                         5.235937, 8.606257, 9.379895, 9.245276, 6.843858, 8.501440,
+                         6.014542, 8.588910, 9.310258, 9.779331, 8.318790, 9.248476,
+                         6.830000, 7.932555, 9.129109, 5.463816, 6.260674, 5.947092), nrow = n, byrow = TRUE)
+
+
 mat = apply(mat,2,rev)
 
 
 # Phase encoding gradient
 delta_f_max = 1
-
 
 delta_f_steps = 2*delta_f_max/n # Double this 
 
@@ -39,13 +41,17 @@ dt = 1 / (2*f_max)  #  Sampling rate
 
 time_sampled = seq(-T_grad,T_grad-dt/2,dt)
 
+
+# See what happens if we slightly miss our sampling window
+
 # Initialize array
 kspace = array(0,dim=c(n_samples,n_samples))
 signals_px = array(0, dim = c(n,n,n_samples))
+random_phase = matrix(runif(n*n), n, n)
 
 # Phase encoding steps 
 for (f_idx in 1:n_samples){
-
+  
   
   # Loop over all pixel
   for (row_idx in 1:n) {
@@ -57,11 +63,15 @@ for (f_idx in 1:n_samples){
       # Get phase at time point T_grad
       # The frequencies from x and y gradients simply add up
       phase = 2*(grad_phase[f_idx,row_idx]*T_grad + grad_freq[col_idx]*time_sampled)
-   
+      
+      # But we were inaccurate
+      #phase = phase - runif(1)
+      phase = phase - random_phase[row_idx,col_idx]
+
       
       # Amplitude at time point T_grad
       signals_px[row_idx,col_idx,] = amp*(cos(pi*phase)-i*sin(pi*phase))
-     
+      
     }
   }
   
@@ -76,7 +86,7 @@ for (f_idx in 1:n_samples){
 
 #kspace_plot = t(apply(Arg(kspace), 2, rev)) 
 
-kspace_plot =Re(kspace)
+kspace_plot =abs(kspace)
 
 df = expand.grid(x = 1:ncol(kspace), y = 1:nrow(kspace))
 df$val = as.vector(t(kspace_plot))
@@ -87,50 +97,28 @@ ggplot(df, aes(x = x, y = y, fill = val)) +
   geom_raster(interpolate = FALSE) +
   scale_fill_gradient(low = "black", high = "white") +
   theme_void() +
-  labs(x = expression("Time [s]"), y =  expression("Gradient strength"~Delta*f[y]~"[Hz]")) +
- theme(
+ # labs(x = expression("Time [s]"), y =  expression("Gradient strength"~Delta*f[y]~"[Hz]")) +
+  theme(
     legend.position = "none",
-    axis.title.x = element_text(),
-    axis.title.y = element_text(angle = 90),
-    axis.text.y = element_text(),
-    axis.text.x = element_text(angle = 45)
+    #axis.title.x = element_text(),
+    #axis.title.y = element_text(angle = 90),
+    #axis.text.y = element_text(),
+   # axis.text.x = element_text(angle = 45)
     
   ) +
-  coord_fixed(expand = FALSE)+
- # coord_fixed(xlim = c(-0.5, ncol(kspace)+0.5 ), ylim = c(-0.5, nrow(kspace)+0.5), expand = FALSE) +
-  scale_x_continuous(
-    breaks = (1:n_samples) ,   # ticks in middle of each pixel
-    labels = round(time_sampled,2)
-  )+
-  scale_y_continuous(
-    breaks = (1:n_samples) ,   # ticks in middle of each pixel
-    labels = round(delta_f,2)
-  )
+  coord_fixed(expand = FALSE)
+#+
+  # coord_fixed(xlim = c(-0.5, ncol(kspace)+0.5 ), ylim = c(-0.5, nrow(kspace)+0.5), expand = FALSE) +
+ # scale_x_continuous(
+  #  breaks = (1:n_samples) ,   # ticks in middle of each pixel
+   # labels = round(time_sampled,2)
+ # )+
+  #scale_y_continuous(
+   # breaks = (1:n_samples) ,   # ticks in middle of each pixel
+  #  labels = round(delta_f,2)
+ # )
 
 
-k_scale =  c(
-  expression(-frac(1, 2)),
-  expression(-frac(1, 3)),
-  expression(-frac(1, 6)),
-  expression(0),
-  expression(frac(1,6)),
-  expression(frac(1,3))
-  )
-
-# Plot in ggplot
-ggplot(df, aes(x = x, y = y, fill = val)) +
-  geom_raster(interpolate = FALSE) +
-  #scale_fill_gradient(low = "black", high = "white") +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,name = NULL) +
-  coord_fixed(expand = FALSE) +
-  theme_minimal() +
-  scale_x_continuous(breaks = 1:n_samples,
-                     labels = k_scale) +
-  scale_y_continuous(breaks = 1:n_samples,
-                     labels = k_scale) +
-  labs(x = expression(k[x]), y =  expression(k[y])) 
-  
-  #theme(legend.position = "none")
 
 
 ## 5. Reconstruct image ##
@@ -148,7 +136,7 @@ df$val = as.vector(t(img_rec))
 
 
 
-  labels_fft = as.character(grad_freq)
+labels_fft = as.character(grad_freq)
 
 
 # Plot in ggplot
@@ -157,9 +145,9 @@ ggplot(df, aes(x = x, y = y, fill = val)) +
   scale_fill_gradient(low = "black", high = "white") +
   coord_fixed(expand = FALSE) +
   theme_minimal() +
-theme(axis.text.y = element_blank(),
-      axis.title.y = element_blank())+
-     # legend.position = "none")+
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "none")+
   scale_x_continuous(
     breaks = (1:n_samples) ,   # ticks in middle of each pixel
     labels = labels_fft
@@ -169,21 +157,11 @@ theme(axis.text.y = element_blank(),
 
 
 kspace2 =  fftshift(fft(fftshift(mat)))
-kspace_plot =abs(kspace2)
 
-df = expand.grid(x = 1:ncol(kspace2), y = 1:nrow(kspace2))
-df$val = as.vector(t(kspace_plot))
+tol = 1e-14
 
-# Plot in ggplot
-ggplot(df, aes(x = x, y = y, fill = val)) +
-  geom_raster(interpolate = FALSE) +
-  scale_fill_gradient(low = "black", high = "white") +
-  theme_void() +
-  coord_fixed(expand = FALSE)+
-  theme(legend.position = "none")
-
-
-
+abs(kspace2-kspace)< tol
+abs(abs(kspace2)-abs(kspace)) < tol
 
 
 

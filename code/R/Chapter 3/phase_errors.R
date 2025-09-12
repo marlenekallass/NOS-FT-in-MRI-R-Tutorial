@@ -39,13 +39,17 @@ dt = 1 / (2*f_max)  #  Sampling rate
 
 time_sampled = seq(-T_grad,T_grad-dt/2,dt)
 
+
 # Initialize array
 kspace = array(0,dim=c(n_samples,n_samples))
 signals_px = array(0, dim = c(n,n,n_samples))
 
+phase_offset = array(0, dim = c(n_samples,n_samples))
+phase_offset[4,3] = 3/4
+
 # Phase encoding steps 
 for (f_idx in 1:n_samples){
-
+  
   
   # Loop over all pixel
   for (row_idx in 1:n) {
@@ -57,11 +61,14 @@ for (f_idx in 1:n_samples){
       # Get phase at time point T_grad
       # The frequencies from x and y gradients simply add up
       phase = 2*(grad_phase[f_idx,row_idx]*T_grad + grad_freq[col_idx]*time_sampled)
-   
+      
+      # But we were inaccurate
+     phase = phase - phase_offset[row_idx,col_idx]
+      
       
       # Amplitude at time point T_grad
       signals_px[row_idx,col_idx,] = amp*(cos(pi*phase)-i*sin(pi*phase))
-     
+      
     }
   }
   
@@ -74,9 +81,7 @@ for (f_idx in 1:n_samples){
 
 ## 4. Plot k-space ##
 
-#kspace_plot = t(apply(Arg(kspace), 2, rev)) 
-
-kspace_plot =Re(kspace)
+kspace_plot =Im(kspace)
 
 df = expand.grid(x = 1:ncol(kspace), y = 1:nrow(kspace))
 df$val = as.vector(t(kspace_plot))
@@ -88,7 +93,7 @@ ggplot(df, aes(x = x, y = y, fill = val)) +
   scale_fill_gradient(low = "black", high = "white") +
   theme_void() +
   labs(x = expression("Time [s]"), y =  expression("Gradient strength"~Delta*f[y]~"[Hz]")) +
- theme(
+  theme(
     legend.position = "none",
     axis.title.x = element_text(),
     axis.title.y = element_text(angle = 90),
@@ -97,8 +102,7 @@ ggplot(df, aes(x = x, y = y, fill = val)) +
     
   ) +
   coord_fixed(expand = FALSE)+
- # coord_fixed(xlim = c(-0.5, ncol(kspace)+0.5 ), ylim = c(-0.5, nrow(kspace)+0.5), expand = FALSE) +
-  scale_x_continuous(
+scale_x_continuous(
     breaks = (1:n_samples) ,   # ticks in middle of each pixel
     labels = round(time_sampled,2)
   )+
@@ -108,29 +112,6 @@ ggplot(df, aes(x = x, y = y, fill = val)) +
   )
 
 
-k_scale =  c(
-  expression(-frac(1, 2)),
-  expression(-frac(1, 3)),
-  expression(-frac(1, 6)),
-  expression(0),
-  expression(frac(1,6)),
-  expression(frac(1,3))
-  )
-
-# Plot in ggplot
-ggplot(df, aes(x = x, y = y, fill = val)) +
-  geom_raster(interpolate = FALSE) +
-  #scale_fill_gradient(low = "black", high = "white") +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,name = NULL) +
-  coord_fixed(expand = FALSE) +
-  theme_minimal() +
-  scale_x_continuous(breaks = 1:n_samples,
-                     labels = k_scale) +
-  scale_y_continuous(breaks = 1:n_samples,
-                     labels = k_scale) +
-  labs(x = expression(k[x]), y =  expression(k[y])) 
-  
-  #theme(legend.position = "none")
 
 
 ## 5. Reconstruct image ##
@@ -140,15 +121,13 @@ fft_result = fftshift(fft(fftshift(kspace),inverse = TRUE))
 
 img_rec = abs(fft_result)
 
-#img_rec_plot = t(apply(img_rec, 2, rev)) 
-#img_rec_plot = t(img_rec)
 #Plot the reconstructed image
 df = expand.grid(x = 1:ncol(img_rec), y = 1:nrow(img_rec))
 df$val = as.vector(t(img_rec))
 
 
 
-  labels_fft = as.character(grad_freq)
+labels_fft = as.character(grad_freq)
 
 
 # Plot in ggplot
@@ -157,9 +136,9 @@ ggplot(df, aes(x = x, y = y, fill = val)) +
   scale_fill_gradient(low = "black", high = "white") +
   coord_fixed(expand = FALSE) +
   theme_minimal() +
-theme(axis.text.y = element_blank(),
-      axis.title.y = element_blank())+
-     # legend.position = "none")+
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "none")+
   scale_x_continuous(
     breaks = (1:n_samples) ,   # ticks in middle of each pixel
     labels = labels_fft
@@ -168,22 +147,39 @@ theme(axis.text.y = element_blank(),
 
 
 
-kspace2 =  fftshift(fft(fftshift(mat)))
-kspace_plot =abs(kspace2)
+fft_result[abs(fft_result)< 1e-10] = 0
+img_phase = Arg(fft_result)/pi
 
-df = expand.grid(x = 1:ncol(kspace2), y = 1:nrow(kspace2))
-df$val = as.vector(t(kspace_plot))
+
+#Plot the reconstructed image
+df = expand.grid(x = 1:ncol(img_phase), y = 1:nrow(img_phase))
+df$val = as.vector(t(img_phase))
+
+
+labels_fft = as.character(grad_freq)
 
 # Plot in ggplot
 ggplot(df, aes(x = x, y = y, fill = val)) +
   geom_raster(interpolate = FALSE) +
   scale_fill_gradient(low = "black", high = "white") +
+  coord_fixed(expand = FALSE) +
   theme_void() +
-  coord_fixed(expand = FALSE)+
   theme(legend.position = "none")
 
 
 
+img_rec = Arg(fft_result[2:(n-1),2:(n-1)])/pi
+
+#Plot the reconstructed image
+df = expand.grid(x = 1:ncol(img_rec), y = 1:nrow(img_rec))
+df$val = as.vector(t(img_rec))
 
 
+# Plot in ggplot
+ggplot(df, aes(x = x, y = y, fill = val)) +
+  geom_raster(interpolate = FALSE) +
+  scale_fill_gradient(low = "black", high = "white") +
+  coord_fixed(expand = FALSE) +
+  theme_void() +
+  theme(legend.position = "none")
 

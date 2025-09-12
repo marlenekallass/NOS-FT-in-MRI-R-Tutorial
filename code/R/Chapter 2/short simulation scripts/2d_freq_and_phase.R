@@ -19,7 +19,7 @@ T_grad = 1/(2*delta_f_max)
 
 delta_f_step = delta_f_max/(n-1)
 
-delta_f = seq(-delta_f_max,delta_f_max-delta_f_step/2,delta_f_step)
+delta_f = seq(-delta_f_max,delta_f_max-delta_f_step,delta_f_step)
 
 n_samples = length(delta_f)
 
@@ -37,7 +37,7 @@ grad_freq = seq(0, f_max, length.out = n)
 dt = 1 / (2*f_max)  
 
 
-time_sampled = seq(-T_grad, T_grad-dt/2, dt)
+time_sampled = seq(-T_grad, T_grad-dt, dt)
 
 # Initialize array
 kspace = array(0,dim=c(n_samples,n_samples))

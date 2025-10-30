@@ -15,7 +15,7 @@ k_imag <- h5read(filename, "K_slice_imag")
 k_slice <- k_real + 1i * k_imag
 
 
-image(abs(k_real),
+image(log(1+abs(k_fake)),
       col = gray.colors(256, start = 0, end = 1), 
       axes = FALSE, asp = 1)
 
@@ -114,7 +114,7 @@ image(abs(k_fake),
       axes = FALSE, asp = 1)
 dev.off()
 
-img_rec = fftshift(fft(fftshift(Re(k_fake)), inverse = TRUE))
+img_rec = fftshift(fft(fftshift(abs(k_fake)), inverse = TRUE))
 
 img_plot <- t(img_rec)[, nrow(img_rec):1]
 
@@ -126,3 +126,11 @@ image(Im(img_plot),
       col = gray.colors(256, start = 0, end = 1), 
       axes = FALSE, asp = 1)
 dev.off()
+
+df = as.data.frame(as.table(asinh(Re(k_fake))))
+ggplot(df, aes(Var1, Var2, fill = Freq)) +
+  geom_raster() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", name = "",guide = "none") +
+  theme_void()+
+  coord_fixed(ratio = 1)
+

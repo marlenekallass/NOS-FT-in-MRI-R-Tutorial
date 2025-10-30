@@ -1,5 +1,5 @@
 source("functions/plotting_functions.R")
-
+par(mar = c(0, 0, 0, 0))
 p = last_plot()
 save_gg(p,path_figures,'img_phase.png',100,90)
 
